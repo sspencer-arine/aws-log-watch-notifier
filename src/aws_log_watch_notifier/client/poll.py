@@ -19,8 +19,6 @@ def poll_log_streams_for_log_group(boto3_session: Session, log_group: str) -> It
 
     last_event_timestamp = int(time() * 1000)
 
-    last_event_timestamp = int((time() - (86400 * 15)) * 1000)
-
     sleep_seconds = 15
 
     while True:
