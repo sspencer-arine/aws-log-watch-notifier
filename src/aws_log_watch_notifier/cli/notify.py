@@ -47,6 +47,15 @@ def notify_command_run(
 
     event_log_stream_contexts: dict[str, dict[str, Any]] = {}
 
+    with Client() as httpx_client:
+        httpx_client.post(
+            slack_notification_url,
+            json={
+                "json_code": "...",
+                "log_stream_name": f"Starting polling for {log_group}",
+            },
+        )
+
     for event in poll_log_streams_for_log_group(boto3_session, log_group):
         buffer.append(event)
 
