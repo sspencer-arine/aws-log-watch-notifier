@@ -45,7 +45,7 @@ def notify_command_run(
 
     buffer: deque["FilteredLogEventTypeDef"] = deque(maxlen=10000)
 
-    log_stream_datas: dict[str, dict[str, Any]] = {}
+    event_log_stream_contexts: dict[str, dict[str, Any]] = {}
 
     for event in poll_log_streams_for_log_group(boto3_session, log_group):
         buffer.append(event)
@@ -65,7 +65,7 @@ def notify_command_run(
 
         if event_message.startswith("START RequestId:"):
             event_metadata = event_message.split(maxsplit=1)[-1]
-            log_stream_datas[event_log_stream_name] = {
+            event_log_stream_contexts[event_log_stream_name] = {
                 "type": "lambda",
                 "metadata": event_metadata,
                 "start": event_timestamp,
@@ -73,13 +73,11 @@ def notify_command_run(
                 "errors": [],
             }
 
-        log_stream_data = log_stream_datas.get(event_log_stream_name)
+        event_log_stream_context = event_log_stream_contexts.get(event_log_stream_name)
 
-        log_stream_data = log_stream_datas.get(event_log_stream_name)
-
-        if log_stream_data:
-            if log_stream_data.get("type") == "lambda":
-                log_steam_data_errors = log_stream_data.get("errors")
+        if event_log_stream_context:
+            if event_log_stream_context.get("type") == "lambda":
+                log_steam_data_errors = event_log_stream_context.get("errors")
 
                 if not isinstance(log_steam_data_errors, list):
                     continue
@@ -103,13 +101,14 @@ def notify_command_run(
                     log_steam_data_errors.append(event_message)
 
                 if event_message.startswith("END RequestId:"):
-                    log_stream_data["end"] = event_timestamp
+                    event_log_stream_context["end"] = event_timestamp
 
-                    if log_stream_data.get("errors"):
+                    if event_log_stream_context.get("errors"):
                         with Client() as httpx_client:
                             httpx_client.post(
                                 slack_notification_url,
                                 json={
-                                    "body": f"{json.dumps(log_stream_data, indent=2, sort_keys=True)}",
+                                    "json_code": f"{json.dumps(event_log_stream_context, indent=2, sort_keys=True)}",
+                                    "log_stream_name": event_log_stream_name,
                                 },
                             )
